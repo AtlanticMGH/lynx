@@ -1,5 +1,8 @@
 #include "shell_builtins.h"
 
+//builtin ideas:
+// change appearance: changes '> ' to what user inputs
+
 //list of builtin commands followed by their functions
 char *builtin_str[] = {
     "cd",

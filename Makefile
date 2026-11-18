@@ -1,4 +1,4 @@
-TARGET = myshell
+TARGET = lynx
 
 #compiler flags
 CC = gcc

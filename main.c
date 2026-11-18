@@ -5,6 +5,12 @@ char *sh_read_line();
 char **sh_split_line(char *line);
 int sh_launch(char **args);
 int sh_execute(char **args);
+static char **push_token(char **tokens, int *count, int *bufsize, char *token);
+char **tokenizer(char *string);
+static bool is_delim(char c);
+
+void print_tokens(char **tokens);
+char **sh_split_line_experimental(char *line);
 
 int main(){
     //load config
@@ -31,7 +37,8 @@ void command_loop(){
         //parse input
         //execute command
         line = sh_read_line();
-        args = sh_split_line(line);
+        args = tokenizer(line);
+        //print_tokens(args);
         status = sh_execute(args);
 
         free(line);
@@ -113,6 +120,78 @@ char **sh_split_line(char *line){
     return tokens;
 }
 
+void print_tokens(char **tokens){
+    for(int i = 0; tokens[i] != NULL; i++){
+        printf("tokens[%d] = \"%s\"\n", i, tokens[i]);
+    }
+}
+
+static char **push_token(char **tokens, int *count, int *bufsize, char *token){
+    tokens[(*count)++] = token;
+
+    if(*count >= *bufsize){
+        *bufsize += SH_TOK_BUFSIZE;
+        char **tmp = realloc(tokens, *bufsize * sizeof(char *));
+        if(!tmp){
+            fprintf(stderr, "sh: allocation error\n");
+            exit(EXIT_FAILURE);
+        }
+        tokens = tmp;
+    }
+    return tokens;
+}
+
+char **tokenizer(char *string){
+    int bufsize = SH_TOK_BUFSIZE;
+    int count = 0;
+    bool in_quotes = false;
+    char *token = NULL;
+
+    char **tokens = malloc(bufsize * sizeof(char *));
+    if(!tokens){
+        fprintf(stderr, "sh: allocation error\n");
+        exit(EXIT_FAILURE);
+    }
+
+    for(char *p = string; *p != '\0'; p++){
+        bool is_quote = (*p == '"');
+        bool is_separator = in_quotes ? is_quote : (is_quote || is_delim(*p));
+
+        if(is_separator){
+            if(token){
+                *p = '\0';
+                tokens = push_token(tokens, &count, &bufsize, token);
+                token = NULL;
+            }
+
+            in_quotes = is_quote && !in_quotes;
+
+            if(in_quotes){
+                token = p + 1;
+            }
+        }
+        else if(!in_quotes && !token){
+            token = p;
+        }
+    }
+
+    if(in_quotes){
+        fprintf(stderr, "sh: unclosed quote\n");
+        free(tokens);
+        return NULL;
+    }
+
+    if(token){
+        tokens = push_token(tokens, &count, &bufsize, token);
+    }
+
+    tokens[count] = NULL;
+    return tokens;
+}
+
+static bool is_delim(char c){
+    return c == ' ' || c == '\t' || c == '\r' || c == '\n';
+}
 
 
 int sh_launch(char **args){
