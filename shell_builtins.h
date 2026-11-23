@@ -8,9 +8,13 @@
 #include <sys/wait.h>
 #include <stdbool.h>
 
+int set_prompt(char *arg);
+char *get_prompt();
+
 int sh_cd(char **args);
 int sh_help(char **args);
 int sh_exit(char **args);
+int sh_chprmt(char **args);
 
 int sh_num_builtins(void);
 

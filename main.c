@@ -1,4 +1,9 @@
 #include "shell_builtins.h"
+#include <stdlib.h>
+#include <pwd.h>
+#include <stdio.h>
+#include <ctype.h>
+
 
 void command_loop();
 char *sh_read_line();
@@ -8,13 +13,19 @@ int sh_execute(char **args);
 static char **push_token(char **tokens, int *count, int *bufsize, char *token);
 char **tokenizer(char *string);
 static bool is_delim(char c);
+char *getUserName();
+char *getDistributionName();
 
 void print_tokens(char **tokens);
 char **sh_split_line_experimental(char *line);
 
 int main(){
     //load config
+    //set_prompt("[test@arch]$");
 
+    char buf[128];
+    snprintf(buf, sizeof buf, "[%s@%s]", getUserName(), getDistributionName());
+    set_prompt(buf);
     //run command loop
     command_loop();
     //perform shutdown/cleanup
@@ -32,7 +43,7 @@ void command_loop(){
     int status;
 
     do{
-        printf("> ");
+        printf("%s ", get_prompt());
         //get user input
         //parse input
         //execute command
@@ -232,4 +243,78 @@ int sh_execute(char **args){
         }
     }
     return sh_launch(args);
+}
+
+char *getUserName()
+{
+  uid_t uid = geteuid();
+  struct passwd *pw = getpwuid(uid);
+  if (pw)
+  {
+    return pw->pw_name;
+  }
+
+  return "";
+}
+
+
+
+// reads DISTRIB_ID from /etc/lsb-release into out; 0 = success, -1 = error
+int get_distrib_id(char *out, size_t out_size)
+{
+    // open file
+    FILE *f = fopen("/etc/lsb-release", "r");
+    if (!f)
+        return -1;
+
+    // key to search for
+    const char *key = "DISTRIB_ID=";
+    size_t key_len = strlen(key);
+
+    // line buffer and return value
+    char line[256];
+    int ret = -1;
+
+    // read file line by line
+    while (fgets(line, sizeof line, f)) {
+        // skip lines without the key
+        if (strncmp(line, key, key_len) != 0)
+            continue;
+
+        // value starts after the key
+        char *val = line + key_len;
+
+        // remove newline
+        val[strcspn(val, "\r\n")] = '\0';
+
+        // remove surrounding quotes
+        size_t len = strlen(val);
+        if (len >= 2 && val[0] == '"' && val[len - 1] == '"') {
+            val[len - 1] = '\0';
+            val++;
+        }
+
+        // copy value into caller's buffer
+        snprintf(out, out_size, "%s", val);
+        ret = 0;
+        break;
+    }
+
+    // close file
+    fclose(f);
+    return ret;
+}
+
+char *getDistributionName(){
+    static char id[64];
+    if (get_distrib_id(id, sizeof id) == 0){
+        for(int i = 0; id[i]; i++){
+          id[i] = tolower(id[i]);
+        }
+
+
+        return id;
+    }
+    else
+        return "linux";
 }

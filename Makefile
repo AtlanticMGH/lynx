@@ -2,7 +2,7 @@ TARGET = lynx
 
 #compiler flags
 CC = gcc
-CFLAGS = -Wall -Wextra -std=c99
+CFLAGS = -Wall -Wextra -std=gnu99
 
 #source files
 SRCS = main.c shell_builtins.c
